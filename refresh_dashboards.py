@@ -10,12 +10,13 @@ HTML_FILES = [
 ]
 
 def open_close_wb():
-    excel = win32com.client.Dispatch("Excel.Application")
+    excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = False
     excel.DisplayAlerts = False
     wb = excel.Workbooks.Open(WORKBOOK)
     excel.CalculateUntilAsyncQueriesDone()
     wb.Close(SaveChanges=True)
+    excel.Quit()
     return
 
 def safe_num(v):
