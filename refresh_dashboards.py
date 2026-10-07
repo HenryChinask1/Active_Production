@@ -1,15 +1,4 @@
-#!/usr/bin/env python3
-"""
-Refreshes the three Plant 3 work-center dashboard HTML files from the live
-Active_Sched table in 2026_Active_WorkOrders.xlsm. Run this after the VBA
-AutoRefresh macro has refreshed + saved the workbook.
-
-Only replaces the `const DATA = {...};` block in each HTML file -- all
-styling / layout / pill logic in the files themselves is left untouched.
-Run it, then (separately, from the cloud session) stage + republish
-work_center_dashboard.html to the Artifact if a hosted copy needs updating.
-"""
-import re, json, sys, os, openpyxl
+import re, json, sys, os, openpyxl, win32com.client
 from datetime import datetime
 
 FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -20,17 +9,23 @@ HTML_FILES = [
     os.path.join(FOLDER, "iml_dashboard.html"),
 ]
 
+def open_close_wb():
+    excel = win32com.client.Dispatch("Excel.Application")
+    excel.Visible = False
+    excel.DisplayAlerts = False
+    wb = excel.Workbooks.Open(WORKBOOK)
+    excel.CalculateUntilAsyncQueriesDone()
+    wb.Close(SaveChanges=True)
+    return
+
 def safe_num(v):
-    """Return v if it's a real number, else None (guards against Excel error
-    strings like '#DIV/0!' or '#N/A' leaking into the JSON as text)."""
+    # Return #N/A or DIV errors as None.
     if isinstance(v, (int, float)):
         return v
     return None
 
 def load_rows():
-    wb = openpyxl.load_workbook(WORKBOOK, data_only=True, read_only=True)
-    ws = wb["Active_Sched"]
-    # read_only workbooks don't expose ws.tables, so re-open normally just for the ref
+    open_close_wb()
     wb2 = openpyxl.load_workbook(WORKBOOK, data_only=True)
     ws2 = wb2["Active_Sched"]
     tbl = ws2.tables["Active_Sched"]
@@ -130,9 +125,6 @@ def main():
 
     updated = []
     for path in HTML_FILES:
-        if not os.path.exists(path):
-            print(f"WARNING: {path} not found, skipping")
-            continue
         splice(path, data)
         updated.append(os.path.basename(path))
 
