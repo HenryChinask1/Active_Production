@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<title>Plant 3 Work Center Board</title>
+<style>
+/* Layout concept: TV wall-board. One full-width row per work center,
+   split into NOW / ON DECK / THEN segments (current run + next two),
+   large type throughout so it reads from across the floor. Deliberately
+   single light theme. */
+:root{
+  --bg:#F5F4F1;
+  --surface:#FFFFFF;
+  --surface-2:#F0EEE8;
+  --border:#DDDAD2;
+  --fg:#1D1B18;
+  --fg-muted:#6B6760;
+  --accent:#0079C1;
+  --accent-ink:#00588C;
+  --good:#177A45;
+  --good-bg:#E3F3E9;
+  --idle:#B15E12;
+  --idle-bg:#FBEBDC;
+  --stale:#B0362A;
+  --stale-bg:#FAE6E3;
+  --state-blue:#0079C1;
+  --state-blue-bg:#E1F0FA;
+  --state-yellow:#8A6D00;
+  --state-yellow-bg:#FFF4C9;
+  --state-red:#B0362A;
+  --state-red-bg:#FAE6E3;
+  --state-black:#17140F;
+  --state-black-bg:#E8E6DF;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  padding-inline:28px;
+  padding-block:22px 36px;
+}
+.wrap{max-width:1720px;margin:0 auto}
+.num{font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+header{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+h1{font-size:34px;font-weight:650;margin:0;letter-spacing:-0.01em}
+.eyebrow{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);margin:0 0 4px}
+.freshness{display:flex;align-items:center;gap:10px;font-size:17px;color:var(--fg-muted)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--good);flex:none}
+.freshness.stale .dot{background:var(--stale)}
+.freshness.idle-fresh .dot{background:var(--idle)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:baseline;gap:12px}
+.kpi .v{font-size:34px;font-weight:700}
+.kpi .l{font-size:15px;color:var(--fg-muted)}
+
+.columns{display:grid;grid-template-columns:1fr;gap:28px;align-items:start}
+.column{min-width:0}
+.group-title{font-size:17px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);margin:0 0 10px;padding-top:6px;border-top:1px solid var(--border)}
+
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{
+  display:grid;
+  grid-template-columns:88px 1fr 1fr 1fr;
+  align-items:stretch;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  min-width:0;
+}
+.wc-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 6px;border-right:1px solid var(--border)}
+.wc{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:20px;line-height:1}
+.pill{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+.pill.running{background:var(--good-bg);color:var(--good)}
+.pill.idle{background:var(--idle-bg);color:var(--idle)}
+.pill.blue{background:var(--state-blue-bg);color:var(--state-blue)}
+.pill.yellow{background:var(--state-yellow-bg);color:var(--state-yellow)}
+.pill.red{background:var(--state-red-bg);color:var(--state-red)}
+.pill.black{background:var(--state-black-bg);color:var(--state-black)}
+.pill.cav{font-size:9.5px}
+
+.half{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 16px;min-width:0}
+.half.next,.half.then{background:var(--surface-2)}
+.half.then{border-left:1px solid var(--border)}
+.half-text{min-width:0}
+.half-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-muted);margin-bottom:2px}
+.item-desc{font-size:18px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item-no{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--fg-muted);margin-top:1px}
+.time{font-size:14px;color:var(--fg-muted);margin-top:2px}
+.cph{text-align:right;white-space:nowrap}
+.cph .n{font-size:30px;font-weight:700;color:var(--accent-ink)}
+.cph .u{display:block;font-size:10.5px;font-weight:600;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.03em}
+.empty-note{font-size:16px;color:var(--fg-muted);font-style:italic}
+
+footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px 20px;justify-content:space-between;font-size:12px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.05em}
+
+@media (max-width:640px){
+  .row{grid-template-columns:1fr}
+  .wc-cell{flex-direction:row;border-right:none;border-bottom:1px solid var(--border);justify-content:flex-start;padding:8px 14px}
+  .half{padding:10px 14px}
+  .item-desc{white-space:normal}
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Airlite Plastics · Plant 3</p>
+      <h1>Work Center Schedule</h1>
+    </div>
+    <div class="freshness" id="freshness"><span class="dot"></span><span id="freshness-text">Loading…</span></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="columns" id="groups"></div>
+
+  <footer>
+    <span>Source: 2026_Active_WorkOrders.xlsm · Active_Sched table, refreshed via SSGenAllQueryDetail</span>
+    <span>CONFIDENTIAL — internal use only</span>
+  </footer>
+</div>
+
+<script>
+// DATA is replaced wholesale on each republish with the latest export.
+const DATA = {
+  "exported_at": "2026-10-07T10:05:24",
+  "work_centers": [
+    {
+      "wc": "IML01",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "L410Q555YA-P46841A",
+        "desc": "16 OZ BROCCOLI CHEDDAR LID",
+        "start": "2026-10-07T09:02:11",
+        "end": "2026-10-08T17:02:51",
+        "cph": 6.7,
+        "cycle_time": 5.7,
+        "curr_cycle_time": 10.72,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "L410Q555YA-P46827C",
+        "desc": "16 OZ CHICKEN NOODLE LID",
+        "start": "2026-10-08T17:02:51",
+        "end": "2026-10-10T00:25:06",
+        "cph": 5.9
+      },
+      "nxt2": {
+        "item": "L410Q555YA-P46827C",
+        "desc": "16 OZ CHICKEN NOODLE LID",
+        "start": "2026-10-10T00:25:06",
+        "end": "2026-10-13T06:47:21",
+        "cph": 5.9
+      }
+    },
+    {
+      "wc": "IML02",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "C017Q5000-ZP45768C",
+        "desc": "16OZ BAKED POTATO CUP",
+        "start": "2026-10-07T09:02:11",
+        "end": "2026-10-12T07:22:44",
+        "cph": 5,
+        "cycle_time": 6.75,
+        "curr_cycle_time": 7.37,
+        "cavitation": 0.75
+      },
+      "nxt": {
+        "item": "C017Q5000-ZP45772C",
+        "desc": "16OZ BROCCOLI CHEDDAR CUP",
+        "start": "2026-10-12T07:22:44",
+        "end": "2026-10-14T10:43:41",
+        "cph": 6.7
+      },
+      "nxt2": null
+    },
+    {
+      "wc": "IML03",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "C017Q5000-ZP45772C",
+        "desc": "16OZ BROCCOLI CHEDDAR CUP",
+        "start": "2026-10-07T09:02:11",
+        "end": "2026-10-09T22:42:50",
+        "cph": 6.7,
+        "cycle_time": 6.75,
+        "curr_cycle_time": null,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "C017Q5000-ZP45772C",
+        "desc": "16OZ BROCCOLI CHEDDAR CUP",
+        "start": "2026-10-09T22:42:50",
+        "end": "2026-10-14T01:03:47",
+        "cph": 6.7
+      },
+      "nxt2": null
+    },
+    {
+      "wc": "IML04",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "CR05I501K  51782A",
+        "desc": "5.3oz IP Blueberry & Bilberry Skyr Cup",
+        "start": "2026-10-07T09:02:12",
+        "end": "2026-10-07T09:28:00",
+        "cph": 4.7,
+        "cycle_time": 4.4,
+        "curr_cycle_time": 5.67,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "CR05I501K  47683C",
+        "desc": "5.0oz IP Strawberry Oatmilk Skyr Cup",
+        "start": "2026-10-07T09:34:00",
+        "end": "2026-10-09T03:35:31",
+        "cph": 4.7
+      },
+      "nxt2": {
+        "item": "CR05I501K  47684C",
+        "desc": "5.0oz IP Blueberry Oatmilk Skyr Cup",
+        "start": "2026-10-09T03:41:31",
+        "end": "2026-10-09T21:06:07",
+        "cph": 4.7
+      }
+    },
+    {
+      "wc": "IML05",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "C034U5000-P49548A",
+        "desc": "32OZ CHICKEN TORTILLA TUB",
+        "start": "2026-10-07T09:02:12",
+        "end": "2026-10-13T15:29:13",
+        "cph": 4.3,
+        "cycle_time": 7,
+        "curr_cycle_time": null,
+        "cavitation": 0.5
+      },
+      "nxt": {
+        "item": "C034U5000-P49547A",
+        "desc": "32OZ BROCCOLI CHEDDAR TUB",
+        "start": "2026-10-13T15:29:13",
+        "end": "2026-10-27T11:45:15",
+        "cph": 8.6
+      },
+      "nxt2": null
+    },
+    {
+      "wc": "IML06",
+      "plant": 3,
+      "mfg": "PA IML",
+      "cur": {
+        "item": "CR04I501K  52812A",
+        "desc": "4.4oz Peaches & Cream Extra Creamy Skyr Cup",
+        "start": "2026-10-07T09:02:12",
+        "end": "2026-10-08T02:06:45",
+        "cph": 4.6,
+        "cycle_time": 4.3,
+        "curr_cycle_time": null,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "CR04I501K  52812A",
+        "desc": "4.4oz Peaches & Cream Extra Creamy Skyr Cup",
+        "start": "2026-10-08T02:06:45",
+        "end": "2026-10-09T13:11:12",
+        "cph": 4.6
+      },
+      "nxt2": {
+        "item": "CR04I501K  51796A",
+        "desc": "4.4oz Vanilla Bean Extra Creamy Skyr Cup",
+        "start": "2026-10-09T13:11:12",
+        "end": "2026-10-13T08:16:46",
+        "cph": 4.6
+      }
+    },
+    {
+      "wc": "M01",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0120.09009545",
+        "desc": "DYMATIZE LOGO 90.0D5.0 DR NAT",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-08T13:51:19",
+        "cph": 23.5,
+        "cycle_time": 7,
+        "curr_cycle_time": 7.1,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0120.09009100",
+        "desc": "MEASUREX 90.0D5.0 DR NATURAL FIT FOODS - PLASTIC PALLETS",
+        "start": "2026-10-08T13:51:19",
+        "end": "2026-10-09T09:51:04",
+        "cph": 23.5
+      },
+      "nxt2": {
+        "item": "0120.09009540",
+        "desc": "MEASUREX 90.0D5.0 DR 83494 YELLOW PMS 3955C",
+        "start": "2026-10-09T09:51:04",
+        "end": "2026-10-09T18:24:01",
+        "cph": 22.0
+      }
+    },
+    {
+      "wc": "M02",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0120.04309120",
+        "desc": "ORGAIN LOGO 43.0D4.5 DR NATURAL ST",
+        "start": "2026-10-07T09:02:11",
+        "end": "2026-10-07T20:14:33",
+        "cph": 13.7,
+        "cycle_time": 6,
+        "curr_cycle_time": null,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0120.04309120",
+        "desc": "ORGAIN LOGO 43.0D4.5 DR NATURAL ST",
+        "start": "2026-10-07T20:14:33",
+        "end": "2026-10-08T02:34:39",
+        "cph": 13.7
+      },
+      "nxt2": {
+        "item": "0120.01009300",
+        "desc": "MEASUREX 10.0R5.0 DR RED ROUND BOTTOM REV A",
+        "start": "2026-10-08T02:34:39",
+        "end": "2026-10-08T11:56:58",
+        "cph": 4.8
+      }
+    },
+    {
+      "wc": "M03",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0121.08009100",
+        "desc": "MEASUREX 80.0D4.5 DR NATURAL",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-07T10:01:47",
+        "cph": 25.3,
+        "cycle_time": 6.5,
+        "curr_cycle_time": 6.54,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0121.08009100",
+        "desc": "MEASUREX 80.0D4.5 DR NATURAL",
+        "start": "2026-10-07T10:01:47",
+        "end": "2026-10-09T17:12:45",
+        "cph": 25.3
+      },
+      "nxt2": {
+        "item": "0121.02009500",
+        "desc": "MEASUREX 20.0D4.5DR NATURAL",
+        "start": "2026-10-09T17:18:45",
+        "end": "2026-10-12T17:33:47",
+        "cph": 4.6
+      }
+    },
+    {
+      "wc": "M04",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0121.00909015",
+        "desc": "MEASUREX 9.0C4.5 DR NATURAL REV A",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-07T20:27:28",
+        "cph": 5.2,
+        "cycle_time": 5.25,
+        "curr_cycle_time": 7.12,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0121.00909015",
+        "desc": "MEASUREX 9.0C4.5 DR NATURAL REV A",
+        "start": "2026-10-07T20:27:28",
+        "end": "2026-10-08T10:26:54",
+        "cph": 5.2
+      },
+      "nxt2": {
+        "item": "0120.00902000",
+        "desc": "MEASUREX 9.0C4.5 DR BLUE 54747 REV A",
+        "start": "2026-10-08T10:26:54",
+        "end": "2026-10-08T17:54:23",
+        "cph": 4.8
+      }
+    },
+    {
+      "wc": "MX01",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0121.03209300",
+        "desc": "MEASUREX 32.0D4.5 DR NATURAL REV A",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-07T22:22:26",
+        "cph": 12.9,
+        "cycle_time": 5.25,
+        "curr_cycle_time": null,
+        "cavitation": 0.9375
+      },
+      "nxt": {
+        "item": "0121.03209300",
+        "desc": "MEASUREX 32.0D4.5 DR NATURAL REV A",
+        "start": "2026-10-07T22:22:26",
+        "end": "2026-10-08T18:14:40",
+        "cph": 12.9
+      },
+      "nxt2": {
+        "item": "0120.03209100",
+        "desc": "ORGAIN LOGO 32.0D4.5 DR NATURAL ST",
+        "start": "2026-10-08T18:14:40",
+        "end": "2026-10-09T22:43:07",
+        "cph": 5.8
+      }
+    },
+    {
+      "wc": "MX02",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0120.01480940",
+        "desc": "PET-AG 14.8C3.0 DR SCOOP NAT (ENGRAVED - 1 tbsp.)",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-09T00:01:20",
+        "cph": 5.1,
+        "cycle_time": 5.25,
+        "curr_cycle_time": null,
+        "cavitation": 0.875
+      },
+      "nxt": {
+        "item": "0121.01480920",
+        "desc": "MEASUREX 14.8C4.5 DR NATURAL",
+        "start": "2026-10-09T00:01:20",
+        "end": "2026-10-10T01:00:30",
+        "cph": 7.3
+      },
+      "nxt2": {
+        "item": "0121.01480915",
+        "desc": "MEASUREX 14.8C4.5 DR BLUE",
+        "start": "2026-10-10T01:00:30",
+        "end": "2026-10-12T08:47:08",
+        "cph": 6.7
+      }
+    },
+    {
+      "wc": "MX08",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0121.09409100",
+        "desc": "MEASUREX 94.0D5.0 DR NATURAL",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-08T09:48:11",
+        "cph": 11.8,
+        "cycle_time": 7.5,
+        "curr_cycle_time": null,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0121.09409000",
+        "desc": "MEASUREX 94.0D3.5 DR NATURAL",
+        "start": "2026-10-08T09:48:11",
+        "end": "2026-10-08T13:46:22",
+        "cph": 11.0
+      },
+      "nxt2": {
+        "item": "0121.09409000",
+        "desc": "MEASUREX 94.0D3.5 DR NATURAL",
+        "start": "2026-10-08T13:46:22",
+        "end": "2026-10-15T04:14:59",
+        "cph": 11.0
+      }
+    },
+    {
+      "wc": "MX09",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0121.00759102",
+        "desc": "MEASUREX 7.5C2.25 DR NATURAL",
+        "start": "2026-10-07T09:02:10",
+        "end": "2026-10-08T13:49:08",
+        "cph": 1.8,
+        "cycle_time": 5.25,
+        "curr_cycle_time": null,
+        "cavitation": 1
+      },
+      "nxt": {
+        "item": "0121.00759102",
+        "desc": "MEASUREX 7.5C2.25 DR NATURAL",
+        "start": "2026-10-08T13:49:08",
+        "end": "2026-10-09T14:20:00",
+        "cph": 1.8
+      },
+      "nxt2": {
+        "item": "0121.00759300",
+        "desc": "MEASUREX 7.5C5.5 DR NATURAL",
+        "start": "2026-10-09T14:20:00",
+        "end": "2026-10-13T01:43:24",
+        "cph": 2.8
+      }
+    },
+    {
+      "wc": "MX10",
+      "plant": 3,
+      "mfg": "MEASUREX",
+      "cur": {
+        "item": "0510.01501100",
+        "desc": "SNUFF CONTAINER WHT-BOTTOM",
+        "start": "2026-10-07T09:02:11",
+        "end": "2026-10-09T19:42:39",
+        "cph": 12.8,
+        "cycle_time": 8,
+        "curr_cycle_time": 11.54,
+        "cavitation": 0.9375
+      },
+      "nxt": {
+        "item": "0510.01501200",
+        "desc": "SNUFF WHITE PUCK LID",
+        "start": "2026-10-09T19:42:39",
+        "end": "2026-10-14T15:29:11",
+        "cph": 3.5
+      },
+      "nxt2": null
+    }
+  ]
+};
+
+function fmtCph(v){
+  return (v === null || v === undefined) ? '—' : v.toFixed(1);
+}
+
+function fmtTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+
+// Pill state: compares live cycle time (curr_cycle_time) against the
+// standard cycle time (cycle_time) for the job currently running.
+// A work center with no live curr_cycle_time reading at all is treated
+// as down — IQMS only reports a live cycle time while the machine is
+// actually cycling, so missing/null/zero means it isn't running.
+//   No job scheduled at all                    -> Idle (gray)
+//   curr_cycle_time missing or <= 0             -> Down (yellow)
+//   curr_cycle_time == cycle_time (tolerance)   -> Running (blue)
+//   curr_cycle_time <  cycle_time (faster)      -> Running Fast (black)
+//   curr_cycle_time >  cycle_time (slower)      -> Running Slow (red)
+function pillState(wc){
+  if(!wc.cur) return {cls:'idle', text:'Idle'};
+
+  const curr = wc.cur.curr_cycle_time;
+  const std = wc.cur.cycle_time;
+
+  if(curr === null || curr === undefined || curr <= 0){
+    return {cls:'yellow', text:'Down'}; // no live cycle reading — machine is down
+  }
+  if(std === null || std === undefined){
+    return {cls:'blue', text:'Running'}; // live reading but no standard to compare against
+  }
+
+  const tolerance = 0.05; // seconds, absorbs float/rounding noise
+  if(Math.abs(curr - std) <= tolerance) return {cls:'blue', text:'Running'};
+  if(curr < std) return {cls:'black', text:'Running Fast'}; // lower cycle time = faster than standard
+  return {cls:'red', text:'Running Slow'}; // higher cycle time = slower than standard
+}
+
+// Cavitation state: Cavitation % (ACT_CAV / STD_CAV from the table,
+// stored as a 0–1 fraction where 1.0 = 100%) banded into three tiers.
+//   No job / no reading       -> not shown
+//   cavitation >= 95%         -> Running (blue)
+//   cavitation >= 85% (<95%)  -> Caution (yellow)
+//   cavitation <  85%         -> Low (red)
+function cavitationState(wc){
+  if(!wc.cur) return null;
+  const cav = wc.cur.cavitation;
+  if(cav === null || cav === undefined) return null; // no reading yet — nothing to show
+
+  if(cav >= 0.95) return {cls:'blue', text:'Running'};
+  if(cav >= 0.85) return {cls:'yellow', text:'Caution'};
+  return {cls:'red', text:'Low'};
+}
+
+function renderRow(wc){
+  const {cls: pillCls, text: pillText} = pillState(wc);
+  const cavState = cavitationState(wc);
+  const cavPill = cavState ? `<span class="pill cav ${cavState.cls}">${Math.round(wc.cur.cavitation*100)}% CAV</span>` : '';
+
+  const nowHalf = wc.cur ? `
+      <div class="half-text">
+        <div class="half-label">Running now</div>
+        <div class="item-desc" title="${wc.cur.desc}">${wc.cur.desc}</div>
+        <div class="item-no">${wc.cur.item}</div>
+        <div class="time num">${fmtTime(wc.cur.start)} – ${fmtTime(wc.cur.end)}</div>
+      </div>
+      <div class="cph"><span class="n num">${fmtCph(wc.cur.cph)}</span><span class="u">ctn / hr</span></div>
+    ` : `<div class="half-text"><div class="half-label">Running now</div><div class="empty-note">No job running</div></div><div></div>`;
+
+  const nextHalf = wc.nxt ? `
+      <div class="half-text">
+        <div class="half-label">On deck</div>
+        <div class="item-desc" title="${wc.nxt.desc}">${wc.nxt.desc}</div>
+        <div class="item-no">${wc.nxt.item}</div>
+        <div class="time num">starts ${fmtTime(wc.nxt.start)}</div>
+      </div>
+      <div class="cph"><span class="n num">${fmtCph(wc.nxt.cph)}</span><span class="u">ctn / hr</span></div>
+    ` : `<div class="half-text"><div class="half-label">On deck</div><div class="empty-note">Nothing scheduled next</div></div><div></div>`;
+
+  const thenHalf = wc.nxt2 ? `
+      <div class="half-text">
+        <div class="half-label">Then</div>
+        <div class="item-desc" title="${wc.nxt2.desc}">${wc.nxt2.desc}</div>
+        <div class="item-no">${wc.nxt2.item}</div>
+        <div class="time num">starts ${fmtTime(wc.nxt2.start)}</div>
+      </div>
+      <div class="cph"><span class="n num">${fmtCph(wc.nxt2.cph)}</span><span class="u">ctn / hr</span></div>
+    ` : `<div class="half-text"><div class="half-label">Then</div><div class="empty-note">Nothing scheduled after that</div></div><div></div>`;
+
+  return `<div class="row">
+    <div class="wc-cell">
+      <span class="wc">${wc.wc}</span>
+      <span class="pill ${pillCls}">${pillText}</span>
+      ${cavPill}
+    </div>
+    <div class="half now">${nowHalf}</div>
+    <div class="half next">${nextHalf}</div>
+    <div class="half then">${thenHalf}</div>
+  </div>`;
+}
+
+function render(data){
+  const wcs = data.work_centers || [];
+  // "Running" = actually cycling right now (blue/red/black pill). Everything
+  // else — no job scheduled, or a job scheduled but not reporting a live
+  // cycle (yellow "Down") — counts as down for this tile.
+  const running = wcs.filter(w => ['blue','red','black'].includes(pillState(w).cls)).length;
+  const down = wcs.length - running;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><span class="v num">${wcs.length}</span><span class="l">Work centers</span></div>
+    <div class="kpi"><span class="v num" style="color:var(--good)">${running}</span><span class="l">Running now</span></div>
+    <div class="kpi"><span class="v num" style="color:var(--idle)">${down}</span><span class="l">Down</span></div>
+  `;
+
+  const groups = {};
+  wcs.forEach(w => { (groups[w.mfg] = groups[w.mfg] || []).push(w); });
+  const order = Object.keys(groups).sort((a,b)=> (a==='MEASUREX'?-1:1) - (b==='MEASUREX'?-1:1) || a.localeCompare(b));
+
+  document.getElementById('groups').innerHTML = order.map(g => `
+    <div class="column">
+      <div class="group-title">${g}</div>
+      <div class="rows">${groups[g].sort((a,b)=>a.wc.localeCompare(b.wc)).map(renderRow).join('')}</div>
+    </div>
+  `).join('');
+
+  const exportedAt = new Date(data.exported_at);
+  const ageMin = (Date.now() - exportedAt.getTime()) / 60000;
+  const fEl = document.getElementById('freshness');
+  const fText = document.getElementById('freshness-text');
+  const stamp = exportedAt.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  if(ageMin > 30){
+    fEl.className = 'freshness stale';
+    fText.textContent = `Data as of ${stamp} — refresh appears stopped`;
+  } else if (ageMin > 15){
+    fEl.className = 'freshness idle-fresh';
+    fText.textContent = `Data as of ${stamp} — running a bit behind`;
+  } else {
+    fEl.className = 'freshness';
+    fText.textContent = `Updated ${stamp} · refreshes every 10 min while the workbook is open`;
+  }
+}
+
+render(DATA);
+</script>
