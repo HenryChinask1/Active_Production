@@ -26,7 +26,6 @@ def safe_num(v):
     return None
 
 def load_rows():
-    open_close_wb()
     wb2 = openpyxl.load_workbook(WORKBOOK, data_only=True)
     ws2 = wb2["Active_Sched"]
     tbl = ws2.tables["Active_Sched"]
